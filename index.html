@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Halfsaid</title>
+  <link rel="stylesheet" href="design-system/design-system.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── TOKEN OVERRIDES (new design system) ─── */
+    :root {
+      --color-accent:        #FF611A;
+      --color-accent-hover:  #E8551A;
+      --color-accent-active: #CC4A15;
+      --color-accent-subtle: #FFF0E8;
+      --color-accent-muted:  #FFBDA0;
+      --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+    }
+
+    /* ─── RESET ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      line-height: 24px;
+      letter-spacing: -0.08px;
+      color: var(--color-text-primary);
+      background: var(--color-bg-base);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    button, textarea, input {
+      font-family: var(--font-mono);
+    }
+
+    /* ═══════════════════════════════════════
+       EMPTY STATE — Swiss Grid
+    ═══════════════════════════════════════ */
+    #emptyState {
+      display: grid;
+      grid-template-columns: 1fr 600px 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      width: 100%;
+      height: 100%;
+      /* top + left edge drawn once on the container */
+      border-top:  1px solid var(--color-border-subtle);
+      border-left: 1px solid var(--color-border-subtle);
+    }
+    #emptyState.is-hidden { display: none; }
+
+    /* Each cell draws only its right + bottom edge */
+    .grid-cell {
+      border-right:  1px solid var(--color-border-subtle);
+      border-bottom: 1px solid var(--color-border-subtle);
+    }
+
+    /* Hero cell: heading + static description */
+    .hero-cell {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 24px;
+      border-right:  1px solid var(--color-border-subtle);
+      border-bottom: 1px solid var(--color-border-subtle);
+      background: var(--color-bg-base);
+      overflow: hidden;
+    }
+    .hero-h1 {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      line-height: 40px;
+      letter-spacing: -0.5px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+    }
+    .hero-preview {
+      margin-top: 16px;
+      font-family: var(--font-mono);
+      font-size: 16px;
+      line-height: 24px;
+      letter-spacing: -0.08px;
+      color: var(--color-text-primary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 0;
+    }
+
+
+    /* Input cell: textarea + bottom toolbar */
+    .input-cell {
+      display: flex;
+      flex-direction: column;
+      background: var(--color-bg-surface);
+      border-right:  1px solid var(--color-border-subtle);
+      border-bottom: 1px solid var(--color-border-subtle);
+    }
+    .main-textarea {
+      flex: 1;
+      width: 100%;
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 16px;
+      line-height: 24px;
+      letter-spacing: -0.08px;
+      color: var(--color-text-primary);
+      border: none;
+      outline: none;
+      resize: none;
+      background: transparent;
+    }
+    .main-textarea::placeholder {
+      color: var(--color-text-tertiary);
+    }
+
+    /* Toolbar: type chips + generate button */
+    .main-toolbar {
+      display: flex;
+      height: 48px;
+      flex-shrink: 0;
+      border-top: 1px solid var(--color-border-subtle);
+    }
+    .type-btn {
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      height: 100%;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-surface);
+      border: none;
+      border-right: 1px solid var(--color-border-subtle);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color var(--transition-fast), background var(--transition-fast);
+    }
+    .type-btn:hover  { color: var(--color-text-primary); background: #F0F0F2; }
+    .type-btn.is-selected { color: var(--color-text-primary); }
+
+    .main-gen-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #FFFFFF;
+      background: #FF611A;
+      border: none;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    .main-gen-btn:hover    { background: #E8551A; }
+    .main-gen-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ═══════════════════════════════════════
+       SPLIT STATE
+    ═══════════════════════════════════════ */
+    #splitState {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+    }
+    #splitState.is-visible { display: flex; }
+
+    /* Navbar */
+    .nav {
+      height: 56px;
+      border-bottom: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      flex-shrink: 0;
+      background: var(--color-bg-surface);
+    }
+    .nav-logo {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      line-height: 24px;
+      letter-spacing: -0.08px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+
+    /* Split body */
+    .split-body {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    /* ─── LEFT PANEL ─── */
+    .left-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--color-bg-surface);
+      border-right: 1px solid var(--color-border-subtle);
+      overflow: hidden;
+    }
+
+    /* Shared panel header (48px) */
+    .panel-header {
+      height: 48px;
+      border-bottom: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    /* Panel label text */
+    .panel-label {
+      flex: 1;
+      padding: 0 24px;
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+    }
+
+    /* Small header action buttons (Очистити / UA / EN / Копіювати) */
+    .panel-btn {
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      height: 100%;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      background: none;
+      border: none;
+      border-left: 1px solid var(--color-border-subtle);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color var(--transition-fast);
+    }
+    .panel-btn:hover { color: var(--color-text-primary); }
+    .panel-btn.is-active { color: var(--color-text-primary); }
+
+    /* Clear button hold progress */
+    #clearBtn {
+      position: relative;
+      overflow: hidden;
+    }
+    @keyframes clear-fill {
+      0%    { width: 0%; }
+      41.7% { width: 60%; }   /* 0.5s of 1.2s — fast phase  */
+      100%  { width: 100%; }  /* remaining 0.7s — slow phase */
+    }
+    #clearBtn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      width: 0%;
+      background: var(--color-bg-subtle);
+      z-index: 0;
+    }
+    #clearBtn.is-holding::before {
+      animation: clear-fill 1s linear forwards;
+    }
+    #clearBtn > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Clear hint tooltip */
+    .clear-hint {
+      position: fixed;
+      z-index: var(--z-toast);
+      background: var(--color-text-primary);
+      color: var(--color-text-inverse);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      white-space: nowrap;
+      height: 36px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity var(--transition-fast), transform var(--transition-fast);
+    }
+    .clear-hint.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Left textarea fills remaining space */
+    .left-textarea-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .left-textarea {
+      width: 100%;
+      height: 100%;
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 16px;
+      line-height: 24px;
+      letter-spacing: -0.08px;
+      color: var(--color-text-primary);
+      border: none;
+      outline: none;
+      resize: none;
+      background: transparent;
+    }
+
+    /* Recommendations header (48px) */
+    .recs-header {
+      height: 48px;
+      border-top: 1px solid var(--color-border-subtle);
+      border-bottom: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      flex-shrink: 0;
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+    }
+
+    /* Recommendation item (48px) */
+    .rec-btn {
+      height: 48px;
+      width: 100%;
+      border: none;
+      border-bottom: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      padding: 0 0 0 24px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 16px;
+      letter-spacing: 0.12px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+      background: var(--color-bg-surface);
+      cursor: pointer;
+      text-align: left;
+      transition: background var(--transition-fast);
+    }
+    .rec-btn-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .rec-btn-plus {
+      width: 48px;
+      height: 100%;
+      border-left: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--color-text-primary);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+    .rec-btn:hover { background: #F0F0F2; }
+    .rec-btn:hover .rec-btn-plus { opacity: 1; }
+
+    /* Generate button (64px, full width, orange) */
+    .gen-btn {
+      height: 56px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #FFFFFF;
+      background: #FF611A;
+      border: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background var(--transition-fast);
+    }
+    .gen-btn:hover    { background: #E8551A; }
+    .gen-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ─── EDIT FRAGMENT PANEL ─── */
+    .left-edit-panel {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    .left-edit-panel.is-visible {
+      display: flex;
+    }
+    .left-original-panel {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    .left-original-panel.is-hidden {
+      display: none;
+    }
+
+    /* Overlay header */
+    .edit-overlay-header {
+      height: 48px;
+      border-bottom: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .edit-overlay-label {
+      flex: 1;
+      padding: 0 24px;
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+    }
+
+    /* Overlay textarea */
+    .edit-overlay-textarea {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 16px;
+      line-height: 24px;
+      letter-spacing: -0.08px;
+      color: var(--color-text-primary);
+      border: none;
+      outline: none;
+      resize: none;
+      background: transparent;
+    }
+
+    /* Overlay footer buttons */
+    .edit-overlay-footer {
+      display: flex;
+      flex-shrink: 0;
+      border-top: 1px solid var(--color-border-subtle);
+    }
+    .edit-cancel-btn {
+      flex: 1;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-primary);
+      background: var(--color-bg-surface);
+      border: none;
+      border-right: 1px solid var(--color-border-subtle);
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    .edit-cancel-btn:hover { background: #F0F0F2; }
+    .edit-apply-btn {
+      flex: 1;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #FFFFFF;
+      background: var(--color-text-primary);
+      border: none;
+      cursor: pointer;
+      transition: opacity var(--transition-fast);
+    }
+    .edit-apply-btn:hover { opacity: 0.85; }
+    .edit-apply-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ─── RIGHT PANEL ─── */
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--color-bg-base);
+      overflow: hidden;
+    }
+
+    .right-header {
+      height: 48px;
+      border-bottom: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    /* Result scroll area */
+    .result-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    /* Skeleton loading */
+    .skeleton-wrap {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 24px;
+    }
+    .skeleton-wrap.is-loading { display: flex; }
+    .skel {
+      height: 14px;
+      background: var(--color-bg-muted);
+      border-radius: 2px;
+      animation: skel-pulse 1.4s ease-in-out infinite;
+    }
+    .skel:nth-child(1) { width: 92%; }
+    .skel:nth-child(2) { width: 78%; }
+    .skel:nth-child(3) { width: 88%; }
+    .skel:nth-child(4) { width: 65%; }
+    .skel:nth-child(5) { width: 83%; }
+    @keyframes skel-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+
+    /* Result content */
+    .result-wrap { display: none; }
+    .result-wrap.is-visible {
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+    }
+
+    .result-text {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      line-height: 24px;
+      letter-spacing: -0.08px;
+      color: var(--color-text-primary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .result-text::selection {
+      background: #F5A623;
+      color: var(--color-text-primary);
+    }
+
+
+    /* ─── SELECTION POPUP ─── */
+    .selection-popup {
+      position: fixed;
+      z-index: var(--z-modal);
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border-subtle);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: none;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(4px);
+      transition: opacity var(--transition-fast), transform var(--transition-fast);
+      min-width: 160px;
+    }
+    .selection-popup.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .sel-btn {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--color-border-subtle);
+      color: var(--color-text-tertiary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      padding: 0 24px;
+      height: 44px;
+      cursor: pointer;
+      white-space: nowrap;
+      text-align: left;
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+    .sel-btn:last-child { border-bottom: none; }
+    .sel-btn:hover { background: #F0F0F2; color: var(--color-text-primary); }
+
+    /* ─── FRAGMENT SKELETON (inline, replaces selected text) ─── */
+    .frag-skel-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 6px;
+      vertical-align: top;
+      width: 100%;
+      padding: 2px 0;
+    }
+    .frag-skel-line {
+      display: block;
+      height: 14px;
+      background: var(--color-bg-muted);
+      border-radius: 2px;
+      animation: skel-pulse 1.4s ease-in-out infinite;
+    }
+
+    /* ─── LANG DROPDOWN ─── */
+    .lang-dropdown-wrap {
+      position: relative;
+      height: 100%;
+      border-left: 1px solid var(--color-border-subtle);
+    }
+    .lang-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 24px;
+      height: 100%;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color var(--transition-fast);
+    }
+    .lang-trigger:hover { color: var(--color-text-primary); }
+    .lang-trigger.is-open { color: var(--color-text-primary); }
+    .lang-menu {
+      position: absolute;
+      top: calc(100% + 1px);
+      right: 0;
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border-subtle);
+      box-shadow: none;
+      z-index: var(--z-dropdown);
+      min-width: 160px;
+      display: none;
+    }
+    .lang-menu.is-open { display: block; }
+    .lang-option {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      height: 44px;
+      padding: 0 24px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--color-border-subtle);
+      cursor: pointer;
+      text-align: left;
+      white-space: nowrap;
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+    .lang-option:last-child { border-bottom: none; }
+    .lang-option:hover { background: var(--color-bg-subtle); color: var(--color-text-primary); }
+    .lang-option.is-active { color: var(--color-text-primary); }
+
+    /* ─── MOBILE NAV + TABS (hidden on desktop) ─── */
+    .mobile-nav {
+      display: none;
+      height: 48px;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--color-border-subtle);
+      flex-shrink: 0;
+      background: var(--color-bg-surface);
+    }
+    .mobile-tabs {
+      display: none;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--color-border-subtle);
+      background: var(--color-bg-surface);
+    }
+    .mobile-tab {
+      flex: 1;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      background: none;
+      border: none;
+      border-right: 1px solid var(--color-border-subtle);
+      cursor: pointer;
+      transition: color var(--transition-fast);
+    }
+    .mobile-tab:last-child { border-right: none; }
+    .mobile-tab.is-active { color: var(--color-text-primary); }
+
+    /* ═══════════════════════════════════════
+       MOBILE  (≤ 768px)
+    ═══════════════════════════════════════ */
+    @media (max-width: 768px) {
+
+      /* ─── Empty State — 24px gutters, 3×3 grid як у Figma ─── */
+      #emptyState {
+        display: grid;
+        grid-template-columns: 24px 1fr 24px;
+        grid-template-rows: auto 1fr 24px;
+        border-top: 1px solid var(--color-border-subtle);
+        border-left: 1px solid var(--color-border-subtle);
+      }
+
+      /* Hero: заголовок 32px, контент до низу */
+      .hero-cell {
+        justify-content: flex-end;
+        padding: 24px;
+      }
+      .hero-h1 {
+        font-size: 32px;
+        line-height: 36px;
+        letter-spacing: -0.64px;
+      }
+      .hero-preview {
+        font-size: 16px;
+        line-height: 24px;
+        margin-top: 16px;
+      }
+
+      /* Toolbar: тип-кнопки в рядок 1, генерувати — рядок 2 */
+      .main-toolbar {
+        flex-wrap: wrap;
+        height: auto;
+        overflow-x: visible;
+      }
+      .type-btn {
+        flex: 1;
+        flex-shrink: 1;
+        padding: 0 12px;
+        height: 48px;
+        justify-content: center;
+      }
+      .main-gen-btn {
+        flex: none;
+        width: 100%;
+        height: 48px;
+      }
+
+      /* ─── Split State ─── */
+      .mobile-tabs { display: flex; }
+
+      .split-body { flex-direction: column; }
+      .left-panel  { border-right: none; }
+
+      /* Tab backgrounds match their respective panel colors (per Figma) */
+      .mobile-tab[data-tab="input"]  { background: var(--color-bg-surface); }
+      .mobile-tab[data-tab="result"] { background: var(--color-bg-base); }
+      /* Both tabs use same text color — active state shown via panel below */
+      .mobile-tab.is-active { color: var(--color-text-tertiary); }
+
+      /* Default (input tab): right panel hidden */
+      .split-body .right-panel { display: none; }
+
+      /* Result tab active: show right, hide left */
+      #splitState.mobile-result .split-body .right-panel { display: flex; }
+      #splitState.mobile-result .split-body .left-panel  { display: none; }
+
+      /* Panel headers: label is now in the tab — hide it, keep action buttons */
+      .panel-header .panel-label,
+      .right-header .panel-label { display: none; }
+      /* UA dropdown: remove left border since label is gone */
+      .lang-dropdown-wrap { border-left: none; }
+      /* КОПІЮВАТИ та ОЧИСТИТИ займають всю доступну ширину, текст по центру */
+      #copyBtn, #clearBtn { flex: 1; justify-content: center; }
+
+      /* ─── Panel spacing ─── */
+      .panel-btn   { padding: 0 16px; }
+      .lang-trigger { padding: 0 16px; }
+
+      .left-textarea  { padding: 16px; font-size: 15px; }
+      .recs-header    { padding: 0 16px; }
+      .rec-btn        { padding-left: 16px; }
+
+      .result-wrap.is-visible { padding: 16px; }
+      .result-text    { font-size: 15px; }
+      .skeleton-wrap  { padding: 16px; }
+
+      /* ─── Selection popup: anchor to bottom centre ─── */
+      .selection-popup {
+        bottom: 20px;
+        left: 50% !important;
+        top: auto !important;
+        transform: translateX(-50%);
+      }
+      .selection-popup.is-visible {
+        transform: translateX(-50%);
+      }
+
+      /* ─── Fragment edit overlay: full screen ─── */
+      .left-edit-panel.is-visible {
+        position: fixed;
+        inset: 0;
+        z-index: var(--z-modal);
+        background: var(--color-bg-surface);
+      }
+
+      /* ─── Edit overlay content adjustments ─── */
+      .edit-overlay-textarea { padding: 16px; font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     EMPTY STATE  (3-col × 3-row CSS grid)
+═══════════════════════════════════════ -->
+<section id="emptyState">
+
+  <!-- Row 1 -->
+  <div class="grid-cell"></div>
+  <div class="hero-cell">
+    <h2 class="hero-h1">Точний промпт для твоєї задачі. Одразу.</h2>
+    <p class="hero-preview">Опиши що потрібно — отримай детальний, структурований промпт для будь-якого AI-інструменту</p>
+  </div>
+  <div class="grid-cell"></div>
+
+  <!-- Row 2 -->
+  <div class="grid-cell"></div>
+  <div class="input-cell">
+    <textarea
+      class="main-textarea"
+      id="mainInput"
+      placeholder="Наприклад: хочу фото собаки у стилі кіберпанк"
+      spellcheck="false"
+      aria-label="Введіть вашу ідею"
+    ></textarea>
+    <div class="main-toolbar">
+      <button class="type-btn" data-type="текст">ТЕКСТ</button>
+      <button class="type-btn" data-type="фото">ФОТО</button>
+      <button class="type-btn" data-type="відео">ВІДЕО</button>
+      <button class="type-btn" data-type="пост">ПОСТ</button>
+      <button class="main-gen-btn" id="generateBtn">ГЕНЕРУВАТИ</button>
+    </div>
+  </div>
+  <div class="grid-cell"></div>
+
+  <!-- Row 3 -->
+  <div class="grid-cell"></div>
+  <div class="grid-cell"></div>
+  <div class="grid-cell"></div>
+
+</section>
+
+<!-- ═══════════════════════════════════════
+     SPLIT STATE
+═══════════════════════════════════════ -->
+<section id="splitState">
+
+  <!-- Mobile-only tab bar (hidden on desktop via CSS) -->
+  <div class="mobile-tabs" id="mobileTabs">
+    <button class="mobile-tab is-active" data-tab="input">Твій промпт</button>
+    <button class="mobile-tab" data-tab="result">Покращений промпт</button>
+  </div>
+
+<div class="split-body">
+
+    <!-- ─── LEFT PANEL ─── -->
+    <div class="left-panel">
+
+      <!-- Original prompt panel -->
+      <div class="left-original-panel" id="leftOriginal">
+        <div class="panel-header">
+          <span class="panel-label">Твій промпт</span>
+          <button class="panel-btn" id="clearBtn" style="border-left: none;"><span>Очистити</span></button>
+        </div>
+
+        <div class="left-textarea-wrap">
+          <textarea
+            class="left-textarea"
+            id="leftInput"
+            spellcheck="false"
+            aria-label="Редагуй свій промпт"
+          ></textarea>
+        </div>
+
+        <div class="recs-header">Додай деталі</div>
+        <div id="recsList"></div>
+
+        <button class="gen-btn" id="regenBtn">Генерувати</button>
+      </div>
+
+      <!-- Edit fragment panel -->
+      <div class="left-edit-panel" id="leftEdit">
+        <div class="edit-overlay-header">
+          <span class="edit-overlay-label">Редагувати уривок</span>
+        </div>
+        <textarea
+          class="edit-overlay-textarea"
+          id="editFragmentInput"
+          spellcheck="false"
+          aria-label="Редагування виділеного уривку"
+        ></textarea>
+        <div class="edit-overlay-footer">
+          <button class="edit-cancel-btn" id="editCancelBtn">Відмінити</button>
+          <button class="edit-apply-btn" id="editApplyBtn">Застосувати</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ─── RIGHT PANEL ─── -->
+    <div class="right-panel">
+
+      <div class="right-header">
+        <span class="panel-label">Покращений промпт</span>
+        <div class="lang-dropdown-wrap" id="langDropdownWrap">
+          <button class="lang-trigger" id="langTrigger" aria-haspopup="listbox" aria-expanded="false">
+            <span id="langTriggerLabel">UA</span>
+          </button>
+          <div class="lang-menu" id="langMenu" role="listbox">
+            <button class="lang-option is-active" data-lang="ua" role="option" aria-selected="true">Українська</button>
+            <button class="lang-option" data-lang="en" role="option" aria-selected="false">English</button>
+          </div>
+        </div>
+        <button class="panel-btn" id="copyBtn" style="color: var(--color-text-primary)">
+          <span id="copyText">Копіювати</span>
+        </button>
+      </div>
+
+      <div class="result-scroll" id="resultScroll">
+        <div class="skeleton-wrap" id="skeletonWrap">
+          <div class="skel"></div>
+          <div class="skel"></div>
+          <div class="skel"></div>
+          <div class="skel"></div>
+          <div class="skel"></div>
+        </div>
+        <div class="result-wrap" id="resultWrap">
+          <div class="result-text" id="resultText" aria-live="polite"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Clear hint tooltip -->
+<div class="clear-hint" id="clearHint">Затисни, щоб очистити</div>
+
+<!-- Selection popup -->
+<div class="selection-popup" id="selectionPopup" role="menu" aria-label="Дії з виділеним текстом">
+  <button class="sel-btn" id="selCopyBtn">Копіювати</button>
+  <button class="sel-btn" id="selEditBtn">Редагувати</button>
+  <button class="sel-btn" id="selRegenBtn">Генерувати ще</button>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────
+   APP STATE
+───────────────────────────────────────────── */
+const appState = {
+  lang:         'ua',
+  selectedType: null, // explicit type from type buttons; null = auto-detect
+  resultUA:     '',
+  resultEN:     '',
+  generating:   false,
+};
+
+/* ─────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────── */
+function $(id) { return document.getElementById(id); }
+
+/* ─────────────────────────────────────────────
+   STREAMING API HELPER
+   Calls a server endpoint and streams SSE chunks back.
+   onChunk(text) is called for every received piece of text.
+───────────────────────────────────────────── */
+async function streamAPI(endpoint, body, onChunk) {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') return;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.text) onChunk(parsed.text);
+      } catch { /* skip malformed chunk */ }
+    }
+  }
+}
+
+function detectType(input) {
+  if (appState.selectedType) return appState.selectedType;
+  const t = input.toLowerCase();
+  if (/\bфото\b|photo|портрет|знімок|зображення|image|picture|кадр/.test(t)) return 'photo';
+  if (/\bвідео\b|video|ролик|кліп|reels|рілс|монтаж/.test(t)) return 'video';
+  if (/пост|post|інстаграм|instagram|facebook|соцмереж|сторіс|стор/.test(t)) return 'post';
+  if (/текст|text|стаття|article|блог|blog|напиши|write|email|лист/.test(t)) return 'text';
+  return 'general';
+}
+
+/* ─────────────────────────────────────────────
+   FRAGMENT REGENERATION
+   Calls /api/regenerate, collects all streamed
+   chunks, and returns the assembled string.
+───────────────────────────────────────────── */
+async function regenerateFragment(instructions, context, lang) {
+  let result = '';
+  await streamAPI('/api/regenerate', { instructions, context, lang }, (chunk) => {
+    result += chunk;
+  });
+  return result;
+}
+
+/* Escape HTML special chars for safe innerHTML insertion */
+function escHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* Build inline fragment skeleton lines based on text line count */
+function buildFragSkeleton(fragment) {
+  const lines = fragment.split('\n');
+  const widths = [92, 78, 85, 65, 80, 70, 88];
+  return lines.map((line, i) => {
+    const chars = line.length || 30;
+    const w = Math.min(Math.max(chars / 60 * 100, 30), widths[i % widths.length]);
+    return `<span class="frag-skel-line" style="width:${w.toFixed(0)}%"></span>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────
+   RECOMMENDATIONS
+───────────────────────────────────────────── */
+const RECS = {
+  photo: [
+    'Який стиль або художній напрям?',
+    'Яке освітлення або колірна гама?',
+    'Який кут або композиція кадру?',
+    'Хто або що головний об\'єкт зйомки?',
+    'Яке місце або атмосфера сцени?',
+  ],
+  video: [
+    'Для якої платформи це відео?',
+    'Який настрій або темп монтажу?',
+    'Яка тривалість і формат відео?',
+    'Яка мета та заклик до дії?',
+    'Хто цільова аудиторія відео?',
+  ],
+  post: [
+    'Для якої соціальної мережі?',
+    'Яка цільова аудиторія посту?',
+    'Який головний заклик до дії?',
+    'До якої події або теми прив\'язаний пост?',
+    'Який тип медіа планується (фото / відео / карусель)?',
+  ],
+  text: [
+    'Хто читач і що він вже знає про тему?',
+    'Який обсяг і формат матеріалу?',
+    'Який тон і стиль подачі?',
+    'Яка головна ідея або висновок?',
+    'Де буде опублікований матеріал?',
+  ],
+  general: [
+    'Який очікуваний формат результату?',
+    'Яка цільова аудиторія?',
+    'Який стиль або тон відповіді?',
+    'Є додаткові обмеження чи вимоги?',
+  ],
+};
+
+function renderRecs(input) {
+  const type = detectType(input);
+  const pool = [...RECS[type]].sort(() => Math.random() - .5).slice(0, 3);
+  const list = $('recsList');
+  list.innerHTML = pool.map(q => `
+    <button class="rec-btn" data-q="${encodeURIComponent(q)}" aria-label="Додати: ${q}">
+      <span class="rec-btn-text">${q}</span>
+      <span class="rec-btn-plus" aria-hidden="true">+</span>
+    </button>`).join('');
+
+  list.querySelectorAll('.rec-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = decodeURIComponent(btn.dataset.q);
+      const ta = $('leftInput');
+      const cur = ta.value.trimEnd();
+      ta.value = cur ? `${cur}\n\n${q}\n` : `${q}\n`;
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    });
+  });
+}
+
+/* ─────────────────────────────────────────────
+   STATE TRANSITIONS
+───────────────────────────────────────────── */
+let transitioned = false;
+
+function showSplit(input) {
+  $('leftInput').value = input;
+  renderRecs(input);
+  $('emptyState').classList.add('is-hidden');
+  $('splitState').classList.add('is-visible');
+  transitioned = true;
+}
+
+/* ─────────────────────────────────────────────
+   GENERATE
+───────────────────────────────────────────── */
+async function runGenerate(input, isRegen = false) {
+  if (appState.generating || !input.trim()) return;
+  appState.generating = true;
+  setDisabled(true);
+
+  $('skeletonWrap').classList.add('is-loading');
+  $('resultWrap').classList.remove('is-visible');
+  $('resultText').textContent = '';
+
+  if (!isRegen) showSplit(input);
+
+  const lang = appState.lang;
+  const type = detectType(input);
+  let accumulated = '';
+  let firstChunk  = true;
+
+  try {
+    await streamAPI('/api/generate', { input, type, lang }, (chunk) => {
+      if (firstChunk) {
+        firstChunk = false;
+        $('skeletonWrap').classList.remove('is-loading');
+        $('resultWrap').classList.add('is-visible');
+      }
+      accumulated += chunk;
+      $('resultText').textContent = accumulated;
+      // keep result in view as it streams
+      const scroll = $('resultScroll');
+      scroll.scrollTop = scroll.scrollHeight;
+    });
+
+    // save to state so lang switch / copy work
+    if (lang === 'ua') appState.resultUA = accumulated;
+    else               appState.resultEN = accumulated;
+
+    // edge-case: stream ended with zero chunks
+    if (firstChunk) {
+      $('skeletonWrap').classList.remove('is-loading');
+      $('resultWrap').classList.add('is-visible');
+    }
+
+  } catch (err) {
+    $('skeletonWrap').classList.remove('is-loading');
+    $('resultText').textContent = 'Помилка генерації. Перевір підключення і спробуй ще раз.';
+    $('resultWrap').classList.add('is-visible');
+    console.error('[Halfsaid] generate error:', err);
+  }
+
+  appState.generating = false;
+  setDisabled(false);
+}
+
+function setDisabled(v) {
+  $('generateBtn').disabled = v;
+  $('regenBtn').disabled    = v;
+}
+
+/* ─────────────────────────────────────────────
+   EVENT WIRING
+───────────────────────────────────────────── */
+
+// Type buttons (empty state) — insert template with placeholders
+const TYPE_TEMPLATES = {
+  текст: 'Напиши [тип тексту: стаття, опис, лист, сценарій] про [тема].\nТон: [діловий / дружній / експертний].\nОбсяг: [кількість слів або абзаців]',
+  фото:  'Згенеруй зображення: [що саме зображено].\nСтиль: [фото / ілюстрація / 3D / мінімалізм].\nНастрій: [яскравий / спокійний / драматичний]',
+  відео: 'Напиши сценарій для [тривалість: 15с / 30с / 60с] відео про [тема].\nФормат: [рілс / тікток / ютуб].\nСтиль подачі: [розмовний / динамічний / навчальний]',
+  пост:  'Напиши пост для [платформа: Instagram / LinkedIn / Twitter / Facebook] про [тема].\nЦіль: [залучення / продаж / експертність].\nДодай [хештеги / CTA / емодзі]',
+};
+
+// Track last inserted template so we can replace it on re-click
+let lastInsertedTemplate = null;
+
+document.querySelectorAll('.type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('is-selected'));
+    btn.classList.add('is-selected');
+    appState.selectedType = btn.dataset.type === 'пост'  ? 'post'
+                          : btn.dataset.type === 'фото'  ? 'photo'
+                          : btn.dataset.type === 'відео' ? 'video'
+                          : btn.dataset.type === 'текст' ? 'text'
+                          : null;
+
+    const ta = $('mainInput');
+    const tpl = TYPE_TEMPLATES[btn.dataset.type] || '';
+    if (!tpl) return;
+
+    const cur = ta.value;
+
+    if (!cur.trim() || cur.trim() === lastInsertedTemplate) {
+      // Empty or previous template — replace entirely
+      ta.value = tpl;
+    } else {
+      // User has custom text — append after it
+      ta.value = cur.trimEnd() + '\n\n' + tpl;
+    }
+
+    lastInsertedTemplate = tpl;
+
+    // Place cursor at start of first placeholder [...]
+    const firstBracket = ta.value.indexOf('[');
+    const pos = firstBracket !== -1 ? firstBracket : ta.value.length;
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
+  });
+});
+
+// Generate (empty state)
+$('generateBtn').addEventListener('click', () => {
+  const input = $('mainInput').value.trim();
+  if (input) runGenerate(input, false);
+});
+
+// Cmd/Ctrl+Enter in main textarea
+$('mainInput').addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    const input = e.target.value.trim();
+    if (input) runGenerate(input, false);
+  }
+});
+
+// Regenerate (split state)
+$('regenBtn').addEventListener('click', () => {
+  const input = $('leftInput').value.trim();
+  if (input) runGenerate(input, true);
+});
+
+// Cmd/Ctrl+Enter in left textarea
+$('leftInput').addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    const input = e.target.value.trim();
+    if (input) runGenerate(input, true);
+  }
+});
+
+// Clear — long-press on desktop, simple tap on mobile/touch
+(function () {
+  const btn = $('clearBtn');
+  const isTouch = navigator.maxTouchPoints > 0 || window.innerWidth <= 768;
+
+  function doClear() {
+    const ta = $('leftInput');
+    ta.value = '';
+    ta.focus();
+  }
+
+  if (isTouch) {
+    btn.addEventListener('click', doClear);
+  } else {
+    let holdTimer   = null;
+    let isHolding   = false;
+    let failedCount = 0;
+    const hint      = $('clearHint');
+
+    function positionHint(e) {
+      hint.style.left = (e.clientX + 12) + 'px';
+      hint.style.top  = (e.clientY - 30) + 'px';
+    }
+    function showHint(e) { positionHint(e); hint.classList.add('is-visible'); }
+    function hideHint()  { hint.classList.remove('is-visible'); }
+
+    function abort(countAsFail) {
+      if (!isHolding) return;
+      isHolding = false;
+      clearTimeout(holdTimer);
+      holdTimer = null;
+      btn.classList.remove('is-holding');
+      if (countAsFail) failedCount++;
+    }
+
+    btn.addEventListener('mousedown', () => {
+      isHolding = true;
+      btn.classList.add('is-holding');
+      holdTimer = setTimeout(() => {
+        isHolding = false;
+        holdTimer = null;
+        btn.classList.remove('is-holding');
+        failedCount = 0; // success — reset
+        hideHint();
+        doClear();
+      }, 1000);
+    });
+
+    // Released before timer — counts as failed attempt
+    btn.addEventListener('mouseup', () => abort(true));
+
+    // Left the button — cancel silently, no penalty
+    btn.addEventListener('mouseleave', () => {
+      abort(false);
+      hideHint();
+    });
+
+    // Show/track hint after 2 failures
+    btn.addEventListener('mouseenter', e => { if (failedCount >= 2) showHint(e); });
+    btn.addEventListener('mousemove',  e => { if (failedCount >= 2) positionHint(e); });
+
+    btn.addEventListener('click', e => e.preventDefault());
+  }
+})();
+
+
+// Language dropdown
+(function () {
+  const trigger = $('langTrigger');
+  const menu    = $('langMenu');
+  const label   = $('langTriggerLabel');
+  const options = menu.querySelectorAll('.lang-option');
+
+  const LABELS = { ua: 'UA', en: 'EN' };
+
+  function openMenu() {
+    menu.classList.add('is-open');
+    trigger.classList.add('is-open');
+    trigger.setAttribute('aria-expanded', 'true');
+  }
+  function closeMenu() {
+    menu.classList.remove('is-open');
+    trigger.classList.remove('is-open');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.classList.contains('is-open') ? closeMenu() : openMenu();
+  });
+
+  options.forEach(opt => {
+    opt.addEventListener('click', () => {
+      const lang = opt.dataset.lang;
+      if (lang !== appState.lang) {
+        appState.lang = lang;
+        label.textContent = LABELS[lang];
+        options.forEach(o => {
+          o.classList.toggle('is-active', o.dataset.lang === lang);
+          o.setAttribute('aria-selected', o.dataset.lang === lang ? 'true' : 'false');
+        });
+        if (appState.resultUA || appState.resultEN) {
+          $('resultText').textContent = lang === 'ua' ? appState.resultUA : appState.resultEN;
+        }
+      }
+      closeMenu();
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!$('langDropdownWrap').contains(e.target)) closeMenu();
+  });
+})();
+
+// Copy
+$('copyBtn').addEventListener('click', async () => {
+  const text = appState.lang === 'ua' ? appState.resultUA : appState.resultEN;
+  if (!text) return;
+
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+  }
+
+  $('copyText').textContent = 'Скопійовано';
+  setTimeout(() => { $('copyText').textContent = 'Копіювати'; }, 2200);
+});
+
+
+// ─── SELECTION POPUP ───
+(function () {
+  const popup = $('selectionPopup');
+  let selectedText = '';
+
+  function snapSelectionToWords(sel) {
+    if (!sel.rangeCount || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const startText = range.startContainer.textContent || '';
+    let s = range.startOffset;
+    while (s > 0 && /\S/.test(startText[s - 1])) s--;
+    const endText = range.endContainer.textContent || '';
+    let e = range.endOffset;
+    while (e < endText.length && /\S/.test(endText[e])) e++;
+    try {
+      range.setStart(range.startContainer, s);
+      range.setEnd(range.endContainer, e);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) {}
+  }
+
+  function showPopup(rect) {
+    const ph = 40;
+    let top = rect.top - ph - 8;
+    if (top < 8) top = rect.bottom + 8;
+    let left = rect.left + rect.width / 2 - (popup.offsetWidth || 120) / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - (popup.offsetWidth || 120) - 8));
+    popup.style.top  = top  + 'px';
+    popup.style.left = left + 'px';
+    popup.classList.add('is-visible');
+  }
+
+  function hidePopup() {
+    popup.classList.remove('is-visible');
+    selectedText = '';
+  }
+
+  $('resultText').addEventListener('mouseup', () => {
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) { hidePopup(); return; }
+      snapSelectionToWords(sel);
+      selectedText = sel.toString().trim();
+      if (!selectedText) { hidePopup(); return; }
+      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      showPopup(rect);
+    });
+  });
+
+  document.addEventListener('mousedown', e => {
+    if (!popup.contains(e.target)) hidePopup();
+  });
+
+  $('selCopyBtn').addEventListener('click', async () => {
+    if (!selectedText) return;
+    try { await navigator.clipboard.writeText(selectedText); } catch (_) {
+      const el = Object.assign(document.createElement('textarea'), {
+        value: selectedText, style: 'position:fixed;opacity:0'
+      });
+      document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el);
+    }
+    hidePopup();
+    window.getSelection()?.removeAllRanges();
+  });
+
+  // ── State for edit overlay ──
+  let editFragment    = '';  // the original selected text
+  let editFragBefore  = '';  // text before the fragment in result
+  let editFragAfter   = '';  // text after the fragment in result
+
+  function openEditOverlay(fragment) {
+    const lang     = appState.lang;
+    const fullText = lang === 'ua' ? appState.resultUA : appState.resultEN;
+    const idx      = fullText.indexOf(fragment);
+
+    editFragment   = fragment;
+    editFragBefore = idx !== -1 ? fullText.slice(0, idx) : '';
+    editFragAfter  = idx !== -1 ? fullText.slice(idx + fragment.length) : '';
+
+    $('editFragmentInput').value = fragment;
+
+    $('leftOriginal').classList.add('is-hidden');
+    $('leftEdit').classList.add('is-visible');
+
+    requestAnimationFrame(() => {
+      const input = $('editFragmentInput');
+      input.focus();
+      input.setSelectionRange(0, input.value.length);
+    });
+  }
+
+  function closeEditOverlay() {
+    $('leftEdit').classList.remove('is-visible');
+    $('leftOriginal').classList.remove('is-hidden');
+    editFragment = editFragBefore = editFragAfter = '';
+  }
+
+  $('selEditBtn').addEventListener('click', () => {
+    if (!selectedText) return;
+    const captured = selectedText; // capture before hidePopup clears it
+    hidePopup();
+    window.getSelection()?.removeAllRanges();
+    openEditOverlay(captured);
+  });
+
+  // Cancel
+  $('editCancelBtn').addEventListener('click', closeEditOverlay);
+
+  // Apply — regenerate the fragment using user's edited instructions
+  $('editApplyBtn').addEventListener('click', async () => {
+    const instructions = $('editFragmentInput').value.trim();
+    if (!instructions) return;
+
+    const applyBtn = $('editApplyBtn');
+    applyBtn.disabled = true;
+
+    const lang     = appState.lang;
+    const fullText = lang === 'ua' ? appState.resultUA : appState.resultEN;
+
+    // Capture positions BEFORE closeEditOverlay resets them
+    const before   = editFragBefore;
+    const after    = editFragAfter;
+    const original = editFragment;
+
+    closeEditOverlay();
+
+    // Show inline skeleton where the fragment was
+    const rt = $('resultText');
+    rt.innerHTML =
+      `<span style="white-space:pre-wrap">${escHtml(before)}</span>` +
+      `<span class="frag-skel-wrap">${buildFragSkeleton(original)}</span>` +
+      `<span style="white-space:pre-wrap">${escHtml(after)}</span>`;
+
+    try {
+      const newFragment = await regenerateFragment(instructions, fullText, lang);
+      const newFull = before + newFragment + after;
+
+      if (lang === 'ua') appState.resultUA = newFull;
+      else               appState.resultEN = newFull;
+
+      rt.textContent = newFull;
+    } catch {
+      rt.textContent = fullText;
+    }
+
+    applyBtn.disabled = false;
+  });
+
+  $('selRegenBtn').addEventListener('click', async () => {
+    if (!selectedText) return;
+
+    const lang     = appState.lang;
+    const fullText = lang === 'ua' ? appState.resultUA : appState.resultEN;
+    const fragIdx  = fullText.indexOf(selectedText);
+
+    if (fragIdx === -1) { hidePopup(); return; }
+
+    const before = fullText.slice(0, fragIdx);
+    const after  = fullText.slice(fragIdx + selectedText.length);
+
+    // Show inline skeleton where the fragment was
+    const rt = $('resultText');
+    rt.innerHTML =
+      `<span style="white-space:pre-wrap">${escHtml(before)}</span>` +
+      `<span class="frag-skel-wrap">${buildFragSkeleton(selectedText)}</span>` +
+      `<span style="white-space:pre-wrap">${escHtml(after)}</span>`;
+
+    hidePopup();
+    window.getSelection()?.removeAllRanges();
+
+    try {
+      const newFragment = await regenerateFragment(selectedText, fullText, lang);
+      const newFull = before + newFragment + after;
+
+      if (lang === 'ua') appState.resultUA = newFull;
+      else               appState.resultEN = newFull;
+
+      rt.textContent = newFull;
+    } catch {
+      // Restore original on error
+      rt.textContent = fullText;
+    }
+  });
+})();
+
+// ─── MOBILE TABS ───
+(function () {
+  const MOBILE_BP = 768;
+
+  function activateMobileTab(name) {
+    if (window.innerWidth > MOBILE_BP) return;
+    document.querySelectorAll('.mobile-tab').forEach(t => {
+      t.classList.toggle('is-active', t.dataset.tab === name);
+    });
+    $('splitState').classList.toggle('mobile-result', name === 'result');
+  }
+
+  // Tab clicks
+  document.querySelectorAll('.mobile-tab').forEach(tab => {
+    tab.addEventListener('click', () => activateMobileTab(tab.dataset.tab));
+  });
+
+  // Auto-switch to result tab when skeleton loading starts
+  new MutationObserver(() => {
+    if ($('skeletonWrap').classList.contains('is-loading')) {
+      activateMobileTab('result');
+    }
+  }).observe($('skeletonWrap'), { attributes: true, attributeFilter: ['class'] });
+})();
+</script>
+</body>
+</html>
