@@ -14,9 +14,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Instructions are required' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured' });
+    return res.status(500).json({ error: 'GROQ_API_KEY is not configured' });
   }
 
   const systemText = lang === 'ua'
@@ -43,33 +43,35 @@ Rules:
         : `Full prompt (for context):\n${context}\n\nFragment to rephrase:\n${instructions}`)
     : instructions;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
-
   try {
-    const geminiRes = await fetch(url, {
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemText }] },
-        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        generationConfig: {
-          maxOutputTokens: 1024,
-          temperature: 0.85,
-          topP: 0.95,
-        },
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemText },
+          { role: 'user', content: userMessage },
+        ],
+        max_tokens: 1024,
+        temperature: 0.85,
+        stream: true,
       }),
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      return res.status(geminiRes.status).json({ error: errText });
+    if (!groqRes.ok) {
+      const errText = await groqRes.text();
+      return res.status(groqRes.status).json({ error: errText });
     }
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    const reader = geminiRes.body.getReader();
+    const reader = groqRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
 
@@ -84,10 +86,14 @@ Rules:
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const data = line.slice(6).trim();
-        if (!data) continue;
+        if (data === '[DONE]') {
+          res.write('data: [DONE]\n\n');
+          res.end();
+          return;
+        }
         try {
           const parsed = JSON.parse(data);
-          const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+          const text = parsed.choices?.[0]?.delta?.content;
           if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
         } catch { /* skip malformed chunk */ }
       }
