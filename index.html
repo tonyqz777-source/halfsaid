@@ -262,9 +262,8 @@
       overflow: hidden;
     }
     @keyframes clear-fill {
-      0%    { width: 0%; }
-      41.7% { width: 60%; }   /* 0.5s of 1.2s — fast phase  */
-      100%  { width: 100%; }  /* remaining 0.7s — slow phase */
+      from { width: 0%; }
+      to   { width: 100%; }
     }
     #clearBtn::before {
       content: '';
@@ -365,6 +364,7 @@
       background: var(--color-bg-surface);
       cursor: pointer;
       text-align: left;
+      overflow: hidden;
       transition: background var(--transition-fast);
     }
     .rec-btn-text {
@@ -410,6 +410,41 @@
     }
     .gen-btn:hover    { background: #E8551A; }
     .gen-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ─── SPLIT TYPE SELECT ROW (after clear) ─── */
+    .split-type-row {
+      display: flex;
+      border-top: 1px solid var(--color-border-subtle);
+      border-bottom: 1px solid var(--color-border-subtle);
+      flex-shrink: 0;
+    }
+    .split-type-row.is-hidden { display: none; }
+    .split-type-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 48px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 14px;
+      letter-spacing: 0.66px;
+      font-weight: 500;
+      text-transform: uppercase;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-surface);
+      border: none;
+      border-right: 1px solid var(--color-border-subtle);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color var(--transition-fast), background var(--transition-fast);
+    }
+    .split-type-btn:last-child { border-right: none; }
+    .split-type-btn:hover { color: var(--color-text-primary); background: #F0F0F2; }
+    .split-type-btn.is-selected { color: var(--color-text-primary); }
+
+    /* Recs section wrapper — hidden while type-select-row is shown */
+    #recsSection.is-hidden { display: none; }
 
     /* ─── EDIT FRAGMENT PANEL ─── */
     .left-edit-panel {
@@ -936,8 +971,17 @@
           ></textarea>
         </div>
 
-        <div class="recs-header">Додай деталі</div>
-        <div id="recsList"></div>
+        <div class="split-type-row is-hidden" id="typeSelectRow">
+          <button class="split-type-btn" data-type="текст">ТЕКСТ</button>
+          <button class="split-type-btn" data-type="фото">ФОТО</button>
+          <button class="split-type-btn" data-type="відео">ВІДЕО</button>
+          <button class="split-type-btn" data-type="пост">ПОСТ</button>
+        </div>
+
+        <div id="recsSection">
+          <div class="recs-header">Додай деталі</div>
+          <div id="recsList"></div>
+        </div>
 
         <button class="gen-btn" id="regenBtn">Генерувати</button>
       </div>
@@ -1148,26 +1192,84 @@ const RECS = {
   ],
 };
 
-function renderRecs(input) {
-  const type = detectType(input);
-  const pool = [...RECS[type]].sort(() => Math.random() - .5).slice(0, 3);
-  const list = $('recsList');
-  list.innerHTML = pool.map(q => `
-    <button class="rec-btn" data-q="${encodeURIComponent(q)}" aria-label="Додати: ${q}">
-      <span class="rec-btn-text">${q}</span>
-      <span class="rec-btn-plus" aria-hidden="true">+</span>
-    </button>`).join('');
+// Pool of available recs for the current type (all), and currently shown subset
+let _recsPool  = [];
+let _recsShown = [];
 
-  list.querySelectorAll('.rec-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const q = decodeURIComponent(btn.dataset.q);
-      const ta = $('leftInput');
-      const cur = ta.value.trimEnd();
-      ta.value = cur ? `${cur}\n\n${q}\n` : `${q}\n`;
-      ta.focus();
-      ta.setSelectionRange(ta.value.length, ta.value.length);
-    });
+function renderRecs(input) {
+  const type  = detectType(input);
+  _recsPool   = [...RECS[type]];
+  const shuf  = [..._recsPool].sort(() => Math.random() - .5);
+  _recsShown  = shuf.slice(0, 3);
+  const list  = $('recsList');
+  list.innerHTML = '';
+  _recsShown.forEach(q => list.appendChild(_makeRecBtn(q)));
+}
+
+function _makeRecBtn(q) {
+  const btn = document.createElement('button');
+  btn.className = 'rec-btn';
+  btn.setAttribute('aria-label', 'Додати: ' + q);
+  btn.innerHTML = `<span class="rec-btn-text">${q}</span><span class="rec-btn-plus" aria-hidden="true">+</span>`;
+
+  btn.addEventListener('click', () => {
+    // Append question to left textarea
+    const ta  = $('leftInput');
+    const cur = ta.value.trimEnd();
+    ta.value  = cur ? `${cur}\n\n${q}\n` : `${q}\n`;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+
+    // Find a replacement not currently shown
+    const replacement = _recsPool.find(r => !_recsShown.includes(r));
+    const idx         = _recsShown.indexOf(q);
+
+    // Animate collapse: lock height, then transition to 0
+    btn.style.height   = btn.offsetHeight + 'px';
+    btn.style.overflow = 'hidden';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      btn.style.transition = 'height 0.2s ease, opacity 0.2s ease';
+      btn.style.height     = '0';
+      btn.style.opacity    = '0';
+    }));
+
+    setTimeout(() => {
+      if (replacement !== undefined && btn.parentNode) {
+        _recsShown[idx] = replacement;
+        const newBtn = _makeRecBtn(replacement);
+        // Start from height 0 so we can animate expand
+        newBtn.style.height   = '0';
+        newBtn.style.overflow = 'hidden';
+        newBtn.style.opacity  = '0';
+        btn.parentNode.replaceChild(newBtn, btn);
+        // Small delay lets browser paint the initial 0-height state
+        setTimeout(() => {
+          newBtn.style.transition = 'height 0.22s ease, opacity 0.22s ease';
+          newBtn.style.height     = '48px';
+          newBtn.style.opacity    = '1';
+        }, 16);
+        // Clean up inline styles after expand finishes
+        setTimeout(() => {
+          newBtn.style.transition = '';
+          newBtn.style.height     = '';
+          newBtn.style.overflow   = '';
+          newBtn.style.opacity    = '';
+        }, 16 + 240);
+      } else {
+        if (idx !== -1) _recsShown.splice(idx, 1);
+        btn.remove();
+      }
+    }, 215);
   });
+
+  return btn;
+}
+
+// Switch from type-select-row back to recs section (called after type pick or typing)
+function showRecsSection(input) {
+  $('typeSelectRow').classList.add('is-hidden');
+  $('recsSection').classList.remove('is-hidden');
+  renderRecs(input);
 }
 
 /* ─────────────────────────────────────────────
@@ -1291,6 +1393,44 @@ document.querySelectorAll('.type-btn').forEach(btn => {
   });
 });
 
+// Split-state type buttons (appear after clear)
+$('typeSelectRow').querySelectorAll('.split-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $('typeSelectRow').querySelectorAll('.split-type-btn').forEach(b => b.classList.remove('is-selected'));
+    btn.classList.add('is-selected');
+    appState.selectedType = btn.dataset.type === 'пост'  ? 'post'
+                          : btn.dataset.type === 'фото'  ? 'photo'
+                          : btn.dataset.type === 'відео' ? 'video'
+                          : btn.dataset.type === 'текст' ? 'text'
+                          : null;
+
+    const ta  = $('leftInput');
+    const tpl = TYPE_TEMPLATES[btn.dataset.type] || '';
+    if (tpl) {
+      const cur = ta.value;
+      if (!cur.trim() || cur.trim() === lastInsertedTemplate) {
+        ta.value = tpl;
+      } else {
+        ta.value = cur.trimEnd() + '\n\n' + tpl;
+      }
+      lastInsertedTemplate = tpl;
+      const firstBracket = ta.value.indexOf('[');
+      const pos = firstBracket !== -1 ? firstBracket : ta.value.length;
+      ta.focus();
+      ta.setSelectionRange(pos, pos);
+    }
+
+    showRecsSection(ta.value);
+  });
+});
+
+// Show recs if user types while type-select-row is visible
+$('leftInput').addEventListener('input', () => {
+  if (!$('typeSelectRow').classList.contains('is-hidden')) {
+    showRecsSection($('leftInput').value);
+  }
+});
+
 // Generate (empty state)
 $('generateBtn').addEventListener('click', () => {
   const input = $('mainInput').value.trim();
@@ -1328,6 +1468,12 @@ $('leftInput').addEventListener('keydown', e => {
     const ta = $('leftInput');
     ta.value = '';
     ta.focus();
+    appState.selectedType = null;
+    // Reset any selected state on split type buttons
+    $('typeSelectRow').querySelectorAll('.split-type-btn').forEach(b => b.classList.remove('is-selected'));
+    // Show type-select row, hide recs
+    $('typeSelectRow').classList.remove('is-hidden');
+    $('recsSection').classList.add('is-hidden');
   }
 
   if (isTouch) {
@@ -1377,8 +1523,8 @@ $('leftInput').addEventListener('keydown', e => {
     });
 
     // Show/track hint after 2 failures
-    btn.addEventListener('mouseenter', e => { if (failedCount >= 2) showHint(e); });
-    btn.addEventListener('mousemove',  e => { if (failedCount >= 2) positionHint(e); });
+    btn.addEventListener('mouseenter', e => { if (failedCount >= 1) showHint(e); });
+    btn.addEventListener('mousemove',  e => { if (failedCount >= 1) positionHint(e); });
 
     btn.addEventListener('click', e => e.preventDefault());
   }
